@@ -1,4 +1,12 @@
 {
+  "extraKnownMarketplaces": {
+    "vibe-coding-kit": {
+      "source": {
+        "source": "github",
+        "repo": "dongho108/vibe-coding-kit"
+      }
+    }
+  },
   "enabledPlugins": {
     "vibe-coding-kit@vibe-coding-kit": true
   }
