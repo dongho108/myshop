@@ -16,8 +16,21 @@ import { abandonOrder, startOrder } from "../actions";
 const fields = [
   { id: "recipient", label: "이름", placeholder: "홍길동", autoComplete: "name", type: "text" },
   { id: "phone", label: "연락처", placeholder: "010-1234-5678", autoComplete: "tel", type: "tel" },
-  { id: "address", label: "주소", placeholder: "도로명 주소와 상세 주소", autoComplete: "street-address", type: "text" },
 ] as const;
+
+// 다음(카카오) 우편번호 서비스. 키가 필요 없는 무료 스크립트.
+type DaumPostcodeData = { zonecode: string; roadAddress: string; jibunAddress: string };
+type DaumPostcodeInstance = { open: () => void };
+declare global {
+  interface Window {
+    daum?: {
+      Postcode: new (options: {
+        oncomplete: (data: DaumPostcodeData) => void;
+      }) => DaumPostcodeInstance;
+    };
+  }
+}
+const POSTCODE_SCRIPT_SRC = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
 
 export function CheckoutForm({
   product,
@@ -32,6 +45,41 @@ export function CheckoutForm({
   const [ready, setReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(initialError);
+
+  const [postcodeReady, setPostcodeReady] = useState(
+    () => typeof window !== "undefined" && Boolean(window.daum?.Postcode),
+  );
+  const [zonecode, setZonecode] = useState("");
+  const [roadAddress, setRoadAddress] = useState("");
+  const [detailAddress, setDetailAddress] = useState("");
+  const detailInputRef = useRef<HTMLInputElement>(null);
+  const fullAddress = roadAddress
+    ? `${zonecode ? `(${zonecode}) ` : ""}${roadAddress} ${detailAddress}`.trim()
+    : "";
+
+  // 우편번호 스크립트는 결제창과 상관없이 필요할 때만 불러온다
+  useEffect(() => {
+    if (postcodeReady) return;
+    const script = document.createElement("script");
+    script.src = POSTCODE_SCRIPT_SRC;
+    script.onload = () => setPostcodeReady(true);
+    document.head.appendChild(script);
+    return () => {
+      script.onload = null;
+      document.head.removeChild(script);
+    };
+  }, [postcodeReady]);
+
+  function openAddressSearch() {
+    if (!window.daum?.Postcode) return;
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        setZonecode(data.zonecode);
+        setRoadAddress(data.roadAddress || data.jibunAddress);
+        detailInputRef.current?.focus();
+      },
+    }).open();
+  }
 
   // 토스 결제 UI(결제수단 + 약관)를 주문서 안에 그린다
   useEffect(() => {
@@ -71,6 +119,10 @@ export function CheckoutForm({
     event.preventDefault();
     const widgets = widgetsRef.current;
     if (!widgets || submitting) return;
+    if (!roadAddress) {
+      setError("주소를 검색해주세요.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
 
@@ -79,7 +131,7 @@ export function CheckoutForm({
       productId: product.id,
       recipient: String(data.get("recipient") ?? ""),
       phone: String(data.get("phone") ?? ""),
-      address: String(data.get("address") ?? ""),
+      address: fullAddress,
     });
     if (!order.ok) {
       setError(order.message);
@@ -132,6 +184,42 @@ export function CheckoutForm({
             />
           </div>
         ))}
+
+        <div className="space-y-2">
+          <Label htmlFor="detailAddress" className="text-base">
+            주소
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              placeholder="주소 검색을 눌러주세요"
+              value={roadAddress ? `(${zonecode}) ${roadAddress}` : ""}
+              className="h-12 rounded-xl px-4 text-base"
+            />
+            <button
+              type="button"
+              onClick={openAddressSearch}
+              disabled={!postcodeReady}
+              className={cn(
+                pillClass,
+                "h-12 shrink-0 px-5 text-base disabled:cursor-not-allowed disabled:opacity-40",
+              )}
+            >
+              주소 검색
+            </button>
+          </div>
+          <Input
+            id="detailAddress"
+            ref={detailInputRef}
+            value={detailAddress}
+            onChange={(event) => setDetailAddress(event.target.value)}
+            placeholder="상세 주소 (동·호수 등)"
+            autoComplete="address-line2"
+            className="h-12 rounded-xl px-4 text-base"
+            disabled={!roadAddress}
+            required
+          />
+        </div>
 
         <h2 className="pt-6 text-lg font-semibold">결제 수단</h2>
         {/* 토스 결제 UI가 이 두 칸에 그려진다 */}
