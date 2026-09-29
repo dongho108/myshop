@@ -4,7 +4,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { PillLink } from "@/components/pill-link";
 import { ProductGrid } from "@/components/product-grid";
 import { ProductPhoto } from "@/components/product-photo";
-import { formatPrice, getProduct, products } from "@/data/products";
+import { formatPrice } from "@/data/products";
+import { getProduct, listProducts } from "@/lib/products";
 
 const promises = [
   { icon: Truck, title: "무료배송", body: "모든 키링을 배송비 없이 보내드려요" },
@@ -14,11 +15,11 @@ const promises = [
 
 export default async function ProductPage(props: PageProps<"/products/[id]">) {
   const { id } = await props.params;
-  const product = getProduct(id);
+  const product = await getProduct(id);
   if (!product) notFound();
 
   const soldOut = product.stock === 0;
-  const others = products.filter((p) => p.id !== product.id);
+  const others = (await listProducts()).filter((p) => p.id !== product.id);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-20 sm:px-6">

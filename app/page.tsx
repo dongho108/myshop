@@ -1,9 +1,10 @@
 import { KeyRound } from "lucide-react";
 import { PillLink } from "@/components/pill-link";
 import { ProductGrid } from "@/components/product-grid";
-import { products } from "@/data/products";
+import { listProducts } from "@/lib/products";
 
-export default function Home() {
+export default async function Home() {
+  const products = await listProducts();
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-20 sm:px-6">
       <section className="relative overflow-hidden rounded-2xl bg-muted px-6 py-14 sm:px-12 sm:py-24">

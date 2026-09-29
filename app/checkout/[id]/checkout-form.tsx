@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ANONYMOUS,
   loadTossPayments,
   type TossPaymentsWidgets,
 } from "@tosspayments/tosspayments-sdk";
@@ -22,9 +21,11 @@ const fields = [
 
 export function CheckoutForm({
   product,
+  customerKey,
   initialError,
 }: {
   product: Product;
+  customerKey: string;
   initialError: string | null;
 }) {
   const widgetsRef = useRef<TossPaymentsWidgets | null>(null);
@@ -41,8 +42,7 @@ export function CheckoutForm({
         if (!clientKey) throw new Error("NEXT_PUBLIC_TOSS_CLIENT_KEY가 없어요");
         const tossPayments = await loadTossPayments(clientKey);
         if (cancelled) return;
-        // 로그인을 붙이면 customerKey를 사용자 id로 바꾼다
-        const widgets = tossPayments.widgets({ customerKey: ANONYMOUS });
+        const widgets = tossPayments.widgets({ customerKey });
         await widgets.setAmount({ currency: "KRW", value: product.price });
         await Promise.all([
           widgets.renderPaymentMethods({ selector: "#payment-method" }),
@@ -65,7 +65,7 @@ export function CheckoutForm({
         if (el) el.innerHTML = "";
       }
     };
-  }, [product.price]);
+  }, [product.price, customerKey]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -2,7 +2,8 @@
 
 import { randomUUID } from "node:crypto";
 import { createOrder, updateOrder } from "@/lib/orders";
-import { getProduct } from "@/data/products";
+import { getProduct } from "@/lib/products";
+import { createClient } from "@/lib/supabase/server";
 
 export type StartOrderResult =
   | { ok: true; orderId: string; amount: number; orderName: string }
@@ -16,7 +17,12 @@ export async function startOrder(input: {
   phone: string;
   address: string;
 }): Promise<StartOrderResult> {
-  const product = getProduct(String(input.productId));
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { ok: false, message: "로그인이 필요해요." };
+
+  const product = await getProduct(String(input.productId));
   if (!product) return { ok: false, message: "없는 상품이에요." };
   if (product.stock === 0) return { ok: false, message: "다 팔린 상품이에요." };
 
@@ -32,6 +38,7 @@ export async function startOrder(input: {
 
   const order = await createOrder({
     id: randomUUID(), // 추측할 수 없는 orderId (36자, 영문·숫자·-)
+    userId,
     productId: product.id,
     productName: product.name,
     quantity: 1,

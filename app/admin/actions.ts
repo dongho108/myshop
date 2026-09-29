@@ -12,7 +12,7 @@ export async function saveShipping(
   _prev: ShippingFormState,
   formData: FormData,
 ): Promise<ShippingFormState> {
-  if (!isAdminAllowed()) return { ok: false, message: "권한이 없어요." };
+  if (!(await isAdminAllowed())) return { ok: false, message: "권한이 없어요." };
 
   const orderId = String(formData.get("orderId") ?? "");
   const shippingStatus = String(formData.get("shippingStatus") ?? "") as ShippingStatus;

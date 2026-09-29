@@ -1,7 +1,8 @@
 import { CircleCheck } from "lucide-react";
 import { PillLink } from "@/components/pill-link";
 import { ProductPhoto } from "@/components/product-photo";
-import { formatPrice, getProduct } from "@/data/products";
+import { formatPrice } from "@/data/products";
+import { listProducts } from "@/lib/products";
 import { listOrders, shippingLabel } from "@/lib/orders";
 
 const dateFormat = new Intl.DateTimeFormat("ko-KR", {
@@ -11,8 +12,12 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", {
 
 export default async function OrdersPage(props: PageProps<"/orders">) {
   const { new: newId } = await props.searchParams;
-  // 로그인을 붙이기 전이라 이 컴퓨터에서 결제한 주문이 전부 보인다
-  const orders = (await listOrders()).filter((order) => order.status === "paid");
+  // RLS 덕분에 listOrders()는 로그인한 본인 주문만 돌려준다
+  const [orders, products] = await Promise.all([
+    listOrders().then((all) => all.filter((order) => order.status === "paid")),
+    listProducts(),
+  ]);
+  const productById = new Map(products.map((p) => [p.id, p]));
   const justBought = orders.find((order) => order.id === newId);
 
   return (
@@ -43,7 +48,7 @@ export default async function OrdersPage(props: PageProps<"/orders">) {
       ) : (
         <ul className="mt-6 divide-y divide-border border-y border-border">
           {orders.map((order) => {
-            const product = getProduct(order.productId);
+            const product = productById.get(order.productId);
             return (
               <li key={order.id} className="flex gap-4 py-5">
                 <ProductPhoto

@@ -1,8 +1,13 @@
 import "server-only";
+import { createClient } from "@/lib/supabase/server";
 
-// 관리자 화면을 열어도 되는지.
-// 로그인을 붙이기 전까지는 내 컴퓨터(개발 서버)에서만 열린다.
-// 로그인을 붙이면 "사장님 구글 계정인가"로 바꾼다. 그 전에는 절대 배포하지 않는다.
-export function isAdminAllowed() {
-  return process.env.NODE_ENV === "development";
+// 사장님 구글 계정인지 확인한다. ADMIN_EMAIL과 로그인한 계정의 이메일이 같아야 한다.
+export async function isAdminAllowed() {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return false;
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const email = data?.claims?.email;
+  return typeof email === "string" && email.toLowerCase() === adminEmail.toLowerCase();
 }

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { formatPrice } from "@/data/products";
 import { isAdminAllowed } from "@/lib/admin";
-import { listOrders, shippingLabel, type ShippingStatus } from "@/lib/orders";
+import { listAllOrdersForAdmin, shippingLabel, type ShippingStatus } from "@/lib/orders";
 import { ShippingForm } from "./shipping-form";
 
 export const metadata: Metadata = {
@@ -21,9 +21,9 @@ const order: ShippingStatus[] = ["preparing", "shipping", "delivered"];
 
 export default async function AdminPage() {
   await connection(); // 매번 최신 주문을 읽는다
-  if (!isAdminAllowed()) notFound();
+  if (!(await isAdminAllowed())) notFound();
 
-  const all = await listOrders();
+  const all = await listAllOrdersForAdmin();
   const paid = all
     .filter((o) => o.status === "paid")
     // 할 일이 남은 주문(준비 중)이 위로 오게
@@ -35,9 +35,7 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pt-6 pb-20 sm:px-6">
-      <p className="text-sm text-muted-foreground">
-        사장님 전용 · 지금은 내 컴퓨터에서만 열려요
-      </p>
+      <p className="text-sm text-muted-foreground">사장님 전용</p>
       <h1 className="mt-1 text-3xl font-bold tracking-tight">주문 관리</h1>
 
       <dl className="mt-6 grid grid-cols-3 gap-3">
